@@ -72,9 +72,9 @@ const LoginScreen = () => {
 
   const fetchLogin = async () => {
     try {
-      const responseLogin = await axios.get('http://10.217.16.130:3050/login');
-      const responseCallback = await axios.get('http://10.217.16.130:3050/callback');
-      // const response = await axios.get('http://10.217.16.130:3050/recommendations');
+      const responseLogin = await axios.get('http://192.168.1.4:3050/login');
+      const responseCallback = await axios.get('http://192.168.1.4:3050/callback');
+      // const response = await axios.get('http://192.168.1.4:3050/recommendations');
       // console.log('response rekomendasi', response);
       navigation.navigate('Main');
     } catch (err) {

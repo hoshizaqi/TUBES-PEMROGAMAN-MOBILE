@@ -1,17 +1,12 @@
 import { StyleSheet, Text, View, SafeAreaView, ScrollView, Image, Pressable, FlatList, Button, ActivityIndicator } from 'react-native';
-import { HStack } from '@gluestack-ui/themed';
 import React, { useEffect, useState } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
-import { AntDesign } from '@expo/vector-icons';
-import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import axios from 'axios';
-// import ArtistCard from '../components/ArtistCard';
-// import RecentlyPlayedCard from '../components/RecentlyPlayedCard';
+
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import SearchScreen from './SearchScreen';
-import LibraryScreen from './LibraryScreen';
+
+import axios from 'axios';
+
 import ArtistCard from '../components/ArtistCard';
 import RecomenSongs from '../components/RecomendationSongs';
 
@@ -38,7 +33,7 @@ const HomeScreen = () => {
   const message = greetingMessage();
   const getProfile = async () => {
     try {
-      const data = await axios.get('http://10.217.16.130:3050/profile');
+      const data = await axios.get('http://192.168.1.4:3050/profile');
       console.log('dataProfile: ', data.data);
       setUserProfile(data.data);
       setLoading(false);
@@ -58,7 +53,7 @@ const HomeScreen = () => {
 
   const getRecentlyPlayed = async () => {
     try {
-      const data = await axios.get('http://10.217.16.130:3050/recentlyplayed');
+      const data = await axios.get('http://192.168.1.4:3050/recentlyplayed');
       console.log('dataRecentlyPlayed: ', data.data);
       setRecentlyPlayed(data.data);
     } catch (err) {
@@ -82,7 +77,7 @@ const HomeScreen = () => {
           elevation: 3,
         }}
       >
-        <Image style={{ height: 55, width: 55 }} source={{ uri: item.album_images[0].url }} />
+        <Image style={{ height: 60, width: 60 }} source={{ uri: item.album_images[0].url }} />
         <View style={{ flex: 1, marginHorizontal: 8, justifyContent: 'center' }}>
           <Text numberOfLines={2} style={{ fontSize: 13, fontWeight: 'bold', color: 'white' }}>
             {item.track_name}
@@ -94,7 +89,7 @@ const HomeScreen = () => {
 
   const getMyTopArtist = async () => {
     try {
-      const data = await axios.get('http://10.217.16.130:3050/mytopartists');
+      const data = await axios.get('http://192.168.1.4:3050/mytopartists');
       console.log('dataMyTopArtist: ', data.data);
       setTopArtists(data.data);
     } catch (err) {
@@ -107,7 +102,7 @@ const HomeScreen = () => {
 
   const getRecomenSongs = async () => {
     try {
-      const data = await axios.get('http://10.217.16.130:3050/recommendations');
+      const data = await axios.get('http://192.168.1.4:3050/recommendations');
       console.log('dataRecomSongs: ', data.data);
       setRecomenSongs(data.data);
     } catch (err) {
@@ -142,53 +137,13 @@ const HomeScreen = () => {
               <Text
                 style={{
                   marginLeft: 10,
-                  fontSize: 20,
+                  fontSize: 23,
                   fontWeight: 'bold',
                   color: 'white',
                 }}
               >
                 {message}
               </Text>
-            </View>
-            <View
-              style={{
-                marginTop: 10,
-                marginHorizontal: 12,
-                marginVertical: 5,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              <Pressable
-                style={{
-                  backgroundColor: '#542C61',
-                  padding: 10,
-                  borderRadius: 30,
-                }}
-              >
-                <Text style={{ fontSize: 15, color: 'white' }}>Semua</Text>
-              </Pressable>
-
-              <Pressable
-                style={{
-                  backgroundColor: '#542C61',
-                  padding: 10,
-                  borderRadius: 30,
-                }}
-              >
-                <Text style={{ fontSize: 15, color: 'white' }}>Musik</Text>
-              </Pressable>
-
-              <Pressable
-                style={{
-                  backgroundColor: '#542C61',
-                  padding: 10,
-                  borderRadius: 30,
-                }}
-              >
-                <Text style={{ fontSize: 15, color: 'white' }}>Podcasts</Text>
-              </Pressable>
             </View>
 
             <View style={{ height: 10 }} />

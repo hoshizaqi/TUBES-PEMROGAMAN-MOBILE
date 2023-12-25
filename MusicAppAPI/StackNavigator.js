@@ -9,12 +9,16 @@ import HomeScreen from './screens/HomeScreen';
 import LibraryScreen from './screens/LibraryScreen';
 import SearchScreen from './screens/SearchScreen';
 import LikedSongScreen from './screens/SongLikedScreen';
-import InfoSongScreen from './screens/SongInfoScreen';
+import SongInfoScreen from './screens/SongInfoScreen';
+import SongLikedScreen from './screens/SongLikedScreen';
+import SearchedScreen from './screens/SearchedScreen';
+import AlbumDetail from './screens/AlbumDetail';
+import BrowseDetail from './screens/BrowseDetail';
+import ArtistScreen from './screens/ArtistScreen';
 
 import { Entypo } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { AntDesign } from '@expo/vector-icons';
-import { Feather } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
 
 const Tab = createBottomTabNavigator();
@@ -22,12 +26,6 @@ const Tab = createBottomTabNavigator();
 function BottomTabs() {
   return (
     <Tab.Navigator
-      // tabBarOptions={{
-      //   activeTintColor: 'white',
-      //   inactiveTintColor: 'white',
-      //   activeBackgroundColor: '#602B79',
-      //   inactiveBackgroundColor: '#602B79',
-      // }}
       screenOptions={{
         tabBarStyle: {
           backgroundColor: '#602B79',
@@ -62,6 +60,7 @@ function BottomTabs() {
         options={{
           headerShown: false,
           tabBarLabel: 'Search',
+          tabBarLabelStyle: { color: 'white' },
           tabBarIcon: ({ focused }) => (focused ? <FontAwesome name="search" size={24} color="white" alt="SearchIcon" /> : <AntDesign name="search1" size={24} color="white" alt="SearchIcon" />),
         }}
       />
@@ -71,6 +70,7 @@ function BottomTabs() {
         options={{
           headerShown: false,
           tabBarLabel: 'Library',
+          tabBarLabelStyle: { color: 'white' },
           tabBarIcon: ({ focused }) => (focused ? <Ionicons name="ios-list-circle" size={24} color="white" alt="LibraryIcon" /> : <Ionicons name="ios-list-circle-outline" size={24} color="white" alt="LibraryIcon" />),
         }}
       />
@@ -86,7 +86,12 @@ function StackNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Main" component={BottomTabs} options={{ headerShown: false }} />
         <Stack.Screen name="Liked" component={LikedSongScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Info" component={InfoSongScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Info" component={SongInfoScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SongLiked" component={SongLikedScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Searched" component={SearchedScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="AlbumDetail" component={AlbumDetail} options={{ headerShown: false }} />
+        <Stack.Screen name="ArtistScreen" component={ArtistScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="BrowseDetail" component={BrowseDetail} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

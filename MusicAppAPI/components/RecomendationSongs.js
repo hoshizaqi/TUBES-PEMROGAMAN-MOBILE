@@ -4,7 +4,7 @@ import React from 'react';
 const RecomenSongs = ({ item }) => {
   return (
     <View style={{ margin: 10, alignItems: 'center' }}>
-      <Image style={{ width: 120, height: 120, borderRadius: 5 }} source={{ uri: item.images[0].url }} />
+      <Image style={{ width: 125, height: 125, borderRadius: 5 }} source={{ uri: item.images[0].url }} />
       <Text
         style={{
           fontSize: 13,

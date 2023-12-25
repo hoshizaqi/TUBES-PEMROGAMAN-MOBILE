@@ -23,7 +23,7 @@ const spotifyApi = new SpotifyWebApi({
 // Route handler for the login endpoint.
 app.get('/login', (req, res) => {
   // Define the scopes for authorization; these are the permissions we ask from the user.
-  const scopes = ['user-read-private', 'user-read-email', 'user-read-playback-state', 'user-modify-playback-state', 'user-top-read', 'user-read-recently-played'];
+  const scopes = ['user-read-private', 'user-read-email', 'user-read-playback-state', 'user-modify-playback-state', 'user-top-read', 'user-read-recently-played', 'playlist-read-private', 'playlist-read-collaborative', 'user-library-read'];
   // Redirect the client to Spotify's authorization page with the defined scopes.
   res.redirect(spotifyApi.createAuthorizeURL(scopes));
 });
@@ -73,19 +73,61 @@ app.get('/callback', (req, res) => {
     });
 });
 
-// Route handler for the search endpoint.
 app.get('/search', (req, res) => {
-  // Extract the search query parameter.
-  const { q } = req.query;
+  const { q, type } = req.query;
 
-  // Make a call to Spotify's search API with the provided query.
+  const searchType = type || 'track';
+
+  const searchTypesArray = searchType.split(',');
+
   spotifyApi
-    .searchTracks(q)
+    .search(q, searchTypesArray, { limit: 20 })
     .then((searchData) => {
-      // Extract the URI of the first track from the search results.
-      const trackUri = searchData.body.tracks.items[0].uri;
-      // Send the track URI back to the client.
-      res.send({ uri: trackUri });
+      let results = [];
+      searchTypesArray.forEach((searchType) => {
+        switch (searchType) {
+          case 'track':
+            results = results.concat(
+              searchData.body.tracks.items.map((track) => ({
+                name: track.name,
+                artists: track.artists.map((artist) => artist.name).join(', '),
+                album: track.album.name,
+                popularity: track.popularity,
+                uri: track.uri,
+                images: track.album.images,
+                duration: track.duration_ms,
+                preview: track.preview_url,
+              }))
+            );
+            break;
+          case 'album':
+            results = results.concat(
+              searchData.body.albums.items.map((album) => ({
+                name: album.name,
+                artists: album.artists.map((artist) => artist.name).join(', '),
+                release_date: album.release_date,
+                uri: album.uri,
+                images: album.images,
+              }))
+            );
+            break;
+          case 'artist':
+            results = results.concat(
+              searchData.body.artists.items.map((artist) => ({
+                name: artist.name,
+                genres: artist.genres.join(', '),
+                popularity: artist.popularity,
+                uri: artist.uri,
+                images: artist.images,
+              }))
+            );
+            break;
+          default:
+            break;
+        }
+      });
+
+      res.send(results);
     })
     .catch((err) => {
       console.error('Search Error:', err);
@@ -93,12 +135,9 @@ app.get('/search', (req, res) => {
     });
 });
 
-// Route handler for the play endpoint.
 app.get('/play', (req, res) => {
-  // Extract the track URI from the query parameters.
   const { uri } = req.query;
 
-  // Send a request to Spotify to start playback of the track with the given URI.
   spotifyApi
     .play({ uris: [uri] })
     .then(() => {
@@ -108,6 +147,26 @@ app.get('/play', (req, res) => {
       console.error('Play Error:', err);
       res.send('Error occurred during playback');
     });
+});
+
+app.get('/next', async (req, res) => {
+  try {
+    await spotifyApi.skipToNext();
+    res.send('Next song played');
+  } catch (err) {
+    console.error('Next Song Error:', err);
+    res.send('Error occurred during next song playback');
+  }
+});
+
+app.get('/previous', async (req, res) => {
+  try {
+    await spotifyApi.skipToPrevious();
+    res.send('Previous song played');
+  } catch (err) {
+    console.error('Previous Song Error:', err);
+    res.send('Error occurred during previous song playback');
+  }
 });
 
 app.get('/profile', (req, res) => {
@@ -147,7 +206,6 @@ app.get('/recentlyplayed', (req, res) => {
         track_uri: item.track.uri,
       }));
 
-      // Ambil hanya 6 item pertama
       const limitedRecentlyPlayedTracks = recentlyPlayedTracks.slice(0, limit);
 
       res.send(limitedRecentlyPlayedTracks);
@@ -171,6 +229,7 @@ app.get('/mytopartists', (req, res) => {
         followers: artist.followers.total,
         uri: artist.uri,
         images: artist.images,
+        id: artist.id,
       }));
 
       res.send(topArtists);
@@ -203,14 +262,11 @@ app.get('/topttracks', (req, res) => {
     });
 });
 
-// Route handler for the recommendations endpoint.
 app.get('/recommendations', async (req, res) => {
   try {
-    // Get the user's top tracks to use as seed tracks for recommendations.
     const topTracksData = await spotifyApi.getMyTopTracks({ limit: 5, time_range: 'medium_term' });
     const seedTracks = topTracksData.body.items.map((track) => track.id);
 
-    // Get recommendations based on the seed tracks.
     const recommendationsData = await spotifyApi.getRecommendations({ seed_tracks: seedTracks });
     const recommendedTracks = recommendationsData.body.tracks.map((track) => ({
       name: track.name,
@@ -220,7 +276,7 @@ app.get('/recommendations', async (req, res) => {
       uri: track.uri,
       images: track.album.images,
     }));
-    // Send the recommended tracks data back to the client.
+
     res.send(recommendedTracks);
   } catch (err) {
     console.error('Recommendations Error:', err);
@@ -228,9 +284,29 @@ app.get('/recommendations', async (req, res) => {
   }
 });
 
+app.get('/recommendations/:trackId', async (req, res) => {
+  try {
+    const { trackId } = req.params;
+
+    const recommendationsData = await spotifyApi.getRecommendations({
+      seed_tracks: [trackId],
+      limit: 10,
+    });
+
+    const recommendedTracks = recommendationsData.body.tracks.map((track) => track.uri);
+
+    await spotifyApi.play({ uris: recommendedTracks });
+
+    res.send('Recommended tracks added to the queue');
+  } catch (err) {
+    console.error('Recommendations Error:', err);
+    res.send('Error occurred while adding recommended tracks to the queue');
+  }
+});
+
 app.get('/browsecategories', async (req, res) => {
   try {
-    const categoryIds = ['party', 'pop', 'hiphop', 'rock'];
+    const categoryIds = ['party', 'pop', 'rock'];
 
     const categoriesData = await spotifyApi.getCategories({ category_ids: categoryIds });
     const categories = categoriesData.body.categories.items.map((category) => ({
@@ -244,6 +320,99 @@ app.get('/browsecategories', async (req, res) => {
   } catch (err) {
     console.error('Browse Categories Error:', err);
     res.send('Error occurred while fetching browse categories');
+  }
+});
+
+app.get('/myplaylists', async (req, res) => {
+  try {
+    const playlistsData = await spotifyApi.getUserPlaylists();
+    const playlists = playlistsData.body.items.map((playlist) => ({
+      id: playlist.id,
+      name: playlist.name,
+      description: playlist.description,
+      owner: playlist.owner.display_name,
+      total_tracks: playlist.tracks.total,
+      uri: playlist.uri,
+      images: playlist.images,
+    }));
+
+    res.send(playlists);
+  } catch (err) {
+    console.error('Playlists Error:', err);
+    res.send('Error occurred while fetching user playlists');
+  }
+});
+
+app.get('/likedsongs', async (req, res) => {
+  try {
+    const likedSongsData = await spotifyApi.getMySavedTracks({ limit: 50 });
+    const likedSongs = likedSongsData.body.items.map((track) => ({
+      name: track.track.name,
+      artists: track.track.artists.map((artist) => artist.name).join(', '),
+      album: track.track.album.name,
+      popularity: track.track.popularity,
+      uri: track.track.uri,
+      images: track.track.album.images,
+      preview: track.track.preview_url,
+    }));
+
+    const likedSongsLenght = likedSongs.length;
+
+    res.send({ likedSongs, likedSongsLenght });
+  } catch (err) {
+    console.error('Liked Songs Error:', err);
+    res.send('Error occurred while fetching liked songs');
+  }
+});
+
+app.get('/playlist/:playlistId', async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+
+    const playlistData = await spotifyApi.getPlaylist(playlistId);
+
+    const playlistDetails = {
+      name: playlistData.body.name,
+      description: playlistData.body.description,
+      owner: playlistData.body.owner.display_name,
+      total_tracks: playlistData.body.tracks.total,
+      tracks: playlistData.body.tracks.items.map((item) => ({
+        name: item.track.name,
+        artists: item.track.artists.map((artist) => artist.name).join(', '),
+        album: item.track.album.name,
+        popularity: item.track.popularity,
+        uri: item.track.uri,
+        images: item.track.album.images,
+        preview: item.track.preview_url,
+      })),
+    };
+
+    res.send(playlistDetails);
+  } catch (err) {
+    console.error('Playlist Details Error:', err);
+    res.send('Error occurred while fetching playlist details');
+  }
+});
+
+app.get('/artist/:artistUri', async (req, res) => {
+  try {
+    const { artistUri } = req.params;
+
+    const artistData = await spotifyApi.getArtist(artistUri);
+
+    const artistDetails = {
+      name: artistData.body.name,
+      genres: artistData.body.genres.join(', '),
+      popularity: artistData.body.popularity,
+      followers: artistData.body.followers.total,
+      uri: artistData.body.uri,
+      images: artistData.body.images,
+    };
+
+    res.send(artistDetails);
+  } catch (err) {
+    console.error('Artist Details Error:', err);
+    res.send('Error occurred while fetching artist details');
   }
 });
 
