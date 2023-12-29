@@ -1,14 +1,15 @@
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, Image, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, Image, Pressable, FlatList, ActivityIndicator, Alert, TextInput, Button } from 'react-native';
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { BottomModal } from 'react-native-modals';
 import { ModalContent } from 'react-native-modals';
+import Modal from 'react-native-modals';
 import { useNavigation } from '@react-navigation/native';
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { AntDesign } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 
 import axios from 'axios';
@@ -16,12 +17,14 @@ import axios from 'axios';
 import { Player } from '../PlayerContext';
 import SongItem from '../components/SongItem';
 
-const SongLikedScreen = () => {
+const AlbumDetail = ({ route }) => {
   const colors = ['#27374D', '#1D267D', '#BE5A83', '#212A3E', '#917FB3', '#37306B', '#443C68', '#5B8FB9', '#144272'];
   const navigation = useNavigation();
-  const [likedSongs, setLikedSongs] = useState([]);
+  const { id, images, name, totalTracks, owner } = route.params;
+  const [newName, setNewName] = useState('');
+  const [songs, setSongs] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [songTotal, setSongTotal] = useState([]);
+  const [modalVisible2, setModalVisible2] = useState(false);
   const { currentTrack, setCurrentTrack } = useContext(Player);
   const [loading, setLoading] = useState(true);
   const [currentSound, setCurrentSound] = useState(null);
@@ -29,16 +32,14 @@ const SongLikedScreen = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [totalDuration, setTotalDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playlistName, setPlaylistName] = useState(name);
   const value = useRef(0);
 
-  const getLikedSongs = async () => {
+  const getSongs = async () => {
     try {
-      const data = await axios.get('http://192.168.1.4:3050/likedsongs');
-      console.log('dataLikedsongs: ', data.data.likedSongs);
-      setLikedSongs(data.data.likedSongs);
-      setSongTotal(data.data.likedSongsLenght);
-      console.log('totalLagu: ', data.data.likedSongsLenght);
-      console.log('Lagu1: ', data.data.likedSongs[0]);
+      const data = await axios.get(`http://192.168.1.4:3050/playlist/${id}`);
+      console.log('dataSongs: ', data.data.tracks);
+      setSongs(data.data.tracks);
       setLoading(false);
     } catch (err) {
       console.log(err.message);
@@ -46,22 +47,20 @@ const SongLikedScreen = () => {
     }
   };
   useEffect(() => {
-    getLikedSongs();
+    getSongs();
   }, []);
 
-  useEffect(() => {
-    console.log('Liked Songs Updated:', likedSongs);
-  }, [likedSongs]);
-
   const playTrack = async () => {
-    if (likedSongs.length > 0) {
-      setCurrentTrack(likedSongs[0]);
+    if (songs.length > 0) {
+      setCurrentTrack(songs[0]);
     }
-    await play(likedSongs[0]);
+    await play(songs[0]);
   };
+
   const play = async (nextTrack) => {
-    console.log(nextTrack);
-    const preview = nextTrack?.preview;
+    console.log('Next Track: ', nextTrack);
+    const uri = nextTrack?.preview;
+    console.log('Next Track uri: ', uri);
     try {
       if (currentSound) {
         await currentSound.stopAsync();
@@ -73,7 +72,7 @@ const SongLikedScreen = () => {
       });
       const { sound, status } = await Audio.Sound.createAsync(
         {
-          uri: preview,
+          uri: uri,
         },
         {
           shouldPlay: true,
@@ -86,14 +85,15 @@ const SongLikedScreen = () => {
       setIsPlaying(status.isLoaded);
       await sound.playAsync();
     } catch (err) {
-      console.log(err.message);
+      console.log('error play: ', err.message);
     }
   };
+
   const onPlaybackStatusUpdate = async (status) => {
-    console.log(status);
+    console.log('Playback status: ', status);
     if (status.isLoaded && status.isPlaying) {
       const progress = status.positionMillis / status.durationMillis;
-      console.log('progresss', progress);
+      console.log('progresss: ', progress);
       setProgress(progress);
       setCurrentTime(status.positionMillis);
       setTotalDuration(status.durationMillis);
@@ -135,8 +135,8 @@ const SongLikedScreen = () => {
       setCurrentSound(null);
     }
     value.current += 1;
-    if (value.current < likedSongs.length) {
-      const nextTrack = likedSongs[value.current];
+    if (value.current < songs.length) {
+      const nextTrack = songs[value.current];
       setCurrentTrack(nextTrack);
       extractColors();
       await play(nextTrack);
@@ -151,13 +151,29 @@ const SongLikedScreen = () => {
       setCurrentSound(null);
     }
     value.current -= 1;
-    if (value.current < likedSongs.length) {
-      const nextTrack = likedSongs[value.current];
+    if (value.current < songs.length) {
+      const nextTrack = songs[value.current];
       setCurrentTrack(nextTrack);
 
       await play(nextTrack);
     } else {
       console.log('end of playlist');
+    }
+  };
+
+  const renamePlaylist = async () => {
+    try {
+      const response = await axios.put(`http://192.168.1.4:3050/renameplaylist/${id}`, {
+        newName: newName,
+      });
+      setPlaylistName(newName);
+
+      // Handle the response accordingly.
+      console.log('renamePlaylisyt: ', response.data);
+      setModalVisible2(false);
+    } catch (error) {
+      // Handle errors.
+      console.error('Rename Playlist Error:', error);
     }
   };
 
@@ -170,10 +186,13 @@ const SongLikedScreen = () => {
               <Ionicons name="arrow-back" size={24} color="white" />
             </Pressable>
             <View style={{ marginHorizontal: 10 }}>
+              <Image source={{ uri: images }} style={{ width: 200, height: 200, alignSelf: 'center' }} />
               <View style={{ height: 20 }} />
-              <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>Lagu yang Disukai</Text>
-              <Text style={{ color: 'white', fontSize: 13, marginTop: 5 }}>{songTotal} Lagu</Text>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>{playlistName}</Text>
+              <Text style={{ fontSize: 13, fontWeight: 'bold', color: 'white' }}>{owner}</Text>
+              <Text style={{ color: 'white', fontSize: 13, marginTop: 5 }}>{totalTracks} Lagu</Text>
             </View>
+            <View style={{ height: 20 }} />
             <Pressable
               style={{
                 flexDirection: 'row',
@@ -195,8 +214,42 @@ const SongLikedScreen = () => {
                 <AntDesign name="arrowdown" size={20} color="white" />
               </Pressable>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <MaterialCommunityIcons name="cross-bolnisi" size={24} color="#1DB954" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 30 }}>
+                <Feather name="edit" size={30} color="#1DB954" onPress={() => setModalVisible2(true)} />
+                <Modal
+                  animationType="slide"
+                  transparent={true}
+                  visible={modalVisible2}
+                  onRequestClose={() => {
+                    setModalVisible2(!modalVisible2);
+                  }}
+                >
+                  <View style={{ justifyContent: 'center', alignItems: 'center', height: 200, width: 270, backgroundColor: '#602B79' }}>
+                    <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: 'white' }}>Rename Playlist</Text>
+                    <TextInput
+                      placeholder="Masukkan Nama Playlist"
+                      value={newName}
+                      onChangeText={(text) => setNewName(text)}
+                      style={{
+                        borderWidth: 1,
+                        padding: 10,
+                        marginBottom: 20,
+                        width: 200,
+                        backgroundColor: 'white',
+                        color: 'black', //
+                      }}
+                    />
+                    <View style={{ flexDirection: 'row', alignContent: 'space-between', gap: 30 }}>
+                      <Button title="Simpan" onPress={renamePlaylist} />
+                      <Button
+                        title="Batal"
+                        onPress={() => {
+                          setModalVisible2(!modalVisible2);
+                        }}
+                      />
+                    </View>
+                  </View>
+                </Modal>
                 <AntDesign name="play" size={50} color="#1DB954" onPress={playTrack} />
               </View>
             </Pressable>
@@ -205,13 +258,11 @@ const SongLikedScreen = () => {
                 <ActivityIndicator size="large" color="#ffffff" />
               </View>
             ) : (
-              <FlatList data={likedSongs} renderItem={({ item }) => <SongItem item={item} onPress={play} isPlaying={item === currentTrack} />} />
+              <FlatList data={songs} renderItem={({ item }) => <SongItem item={item} onPress={play} isPlaying={item === currentTrack} />} />
             )}
-            <View style={{ height: 20 }} />
           </SafeAreaView>
         </ScrollView>
       </LinearGradient>
-
       {currentTrack && (
         <Pressable
           onPress={() => {
@@ -355,7 +406,7 @@ const SongLikedScreen = () => {
   );
 };
 
-export default SongLikedScreen;
+export default AlbumDetail;
 
 const styles = StyleSheet.create({
   progressbar: {

@@ -16,12 +16,12 @@ import axios from 'axios';
 import { Player } from '../PlayerContext';
 import SongItem from '../components/SongItem';
 
-const SongLikedScreen = () => {
+const ArtistScreen = ({ route }) => {
+  const { id, images, name } = route.params;
   const colors = ['#27374D', '#1D267D', '#BE5A83', '#212A3E', '#917FB3', '#37306B', '#443C68', '#5B8FB9', '#144272'];
   const navigation = useNavigation();
-  const [likedSongs, setLikedSongs] = useState([]);
+  const [songs, setSongs] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [songTotal, setSongTotal] = useState([]);
   const { currentTrack, setCurrentTrack } = useContext(Player);
   const [loading, setLoading] = useState(true);
   const [currentSound, setCurrentSound] = useState(null);
@@ -31,14 +31,11 @@ const SongLikedScreen = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const value = useRef(0);
 
-  const getLikedSongs = async () => {
+  const getSongs = async () => {
     try {
-      const data = await axios.get('http://192.168.1.4:3050/likedsongs');
-      console.log('dataLikedsongs: ', data.data.likedSongs);
-      setLikedSongs(data.data.likedSongs);
-      setSongTotal(data.data.likedSongsLenght);
-      console.log('totalLagu: ', data.data.likedSongsLenght);
-      console.log('Lagu1: ', data.data.likedSongs[0]);
+      const data = await axios.get(`http://192.168.1.4:3050/topsongs/${id}`);
+      console.log('datasongsss: ', data.data);
+      setSongs(data.data);
       setLoading(false);
     } catch (err) {
       console.log(err.message);
@@ -46,22 +43,20 @@ const SongLikedScreen = () => {
     }
   };
   useEffect(() => {
-    getLikedSongs();
+    getSongs();
   }, []);
 
-  useEffect(() => {
-    console.log('Liked Songs Updated:', likedSongs);
-  }, [likedSongs]);
-
   const playTrack = async () => {
-    if (likedSongs.length > 0) {
-      setCurrentTrack(likedSongs[0]);
+    if (songs.length > 0) {
+      setCurrentTrack(songs[0]);
     }
-    await play(likedSongs[0]);
+    await play(songs[0]);
   };
+
   const play = async (nextTrack) => {
-    console.log(nextTrack);
-    const preview = nextTrack?.preview;
+    console.log('Next Track: ', nextTrack);
+    const uri = nextTrack?.preview;
+    console.log('Next Track uri: ', uri);
     try {
       if (currentSound) {
         await currentSound.stopAsync();
@@ -73,7 +68,7 @@ const SongLikedScreen = () => {
       });
       const { sound, status } = await Audio.Sound.createAsync(
         {
-          uri: preview,
+          uri: uri,
         },
         {
           shouldPlay: true,
@@ -86,14 +81,15 @@ const SongLikedScreen = () => {
       setIsPlaying(status.isLoaded);
       await sound.playAsync();
     } catch (err) {
-      console.log(err.message);
+      console.log('error play: ', err.message);
     }
   };
+
   const onPlaybackStatusUpdate = async (status) => {
-    console.log(status);
+    console.log('Playback status: ', status);
     if (status.isLoaded && status.isPlaying) {
       const progress = status.positionMillis / status.durationMillis;
-      console.log('progresss', progress);
+      console.log('progresss: ', progress);
       setProgress(progress);
       setCurrentTime(status.positionMillis);
       setTotalDuration(status.durationMillis);
@@ -135,8 +131,8 @@ const SongLikedScreen = () => {
       setCurrentSound(null);
     }
     value.current += 1;
-    if (value.current < likedSongs.length) {
-      const nextTrack = likedSongs[value.current];
+    if (value.current < songs.length) {
+      const nextTrack = songs[value.current];
       setCurrentTrack(nextTrack);
       extractColors();
       await play(nextTrack);
@@ -151,8 +147,8 @@ const SongLikedScreen = () => {
       setCurrentSound(null);
     }
     value.current -= 1;
-    if (value.current < likedSongs.length) {
-      const nextTrack = likedSongs[value.current];
+    if (value.current < songs.length) {
+      const nextTrack = songs[value.current];
       setCurrentTrack(nextTrack);
 
       await play(nextTrack);
@@ -170,10 +166,11 @@ const SongLikedScreen = () => {
               <Ionicons name="arrow-back" size={24} color="white" />
             </Pressable>
             <View style={{ marginHorizontal: 10 }}>
+              <Image source={{ uri: images }} style={{ width: 200, height: 200, alignSelf: 'center' }} />
               <View style={{ height: 20 }} />
-              <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>Lagu yang Disukai</Text>
-              <Text style={{ color: 'white', fontSize: 13, marginTop: 5 }}>{songTotal} Lagu</Text>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>{name}</Text>
             </View>
+            <View style={{ height: 20 }} />
             <Pressable
               style={{
                 flexDirection: 'row',
@@ -205,13 +202,11 @@ const SongLikedScreen = () => {
                 <ActivityIndicator size="large" color="#ffffff" />
               </View>
             ) : (
-              <FlatList data={likedSongs} renderItem={({ item }) => <SongItem item={item} onPress={play} isPlaying={item === currentTrack} />} />
+              <FlatList data={songs} renderItem={({ item }) => <SongItem item={item} onPress={play} isPlaying={item === currentTrack} />} />
             )}
-            <View style={{ height: 20 }} />
           </SafeAreaView>
         </ScrollView>
       </LinearGradient>
-
       {currentTrack && (
         <Pressable
           onPress={() => {
@@ -355,7 +350,7 @@ const SongLikedScreen = () => {
   );
 };
 
-export default SongLikedScreen;
+export default ArtistScreen;
 
 const styles = StyleSheet.create({
   progressbar: {

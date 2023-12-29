@@ -1,67 +1,81 @@
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, Image, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, Image, Pressable, FlatList, TextInput, ActivityIndicator } from 'react-native';
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { BottomModal } from 'react-native-modals';
 import { ModalContent } from 'react-native-modals';
 import { useNavigation } from '@react-navigation/native';
 
 import { LinearGradient } from 'expo-linear-gradient';
+import { Audio } from 'expo-av';
 import { AntDesign } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
 
 import axios from 'axios';
 
 import { Player } from '../PlayerContext';
 import SongItem from '../components/SongItem';
 
-const SongLikedScreen = () => {
-  const colors = ['#27374D', '#1D267D', '#BE5A83', '#212A3E', '#917FB3', '#37306B', '#443C68', '#5B8FB9', '#144272'];
+const SearchedScreen = () => {
   const navigation = useNavigation();
-  const [likedSongs, setLikedSongs] = useState([]);
+  const [input, setInput] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
-  const [songTotal, setSongTotal] = useState([]);
-  const { currentTrack, setCurrentTrack } = useContext(Player);
+  const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentSound, setCurrentSound] = useState(null);
   const [progress, setProgress] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [totalDuration, setTotalDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const { currentTrack, setCurrentTrack } = useContext(Player);
   const value = useRef(0);
 
-  const getLikedSongs = async () => {
-    try {
-      const data = await axios.get('http://192.168.1.4:3050/likedsongs');
-      console.log('dataLikedsongs: ', data.data.likedSongs);
-      setLikedSongs(data.data.likedSongs);
-      setSongTotal(data.data.likedSongsLenght);
-      console.log('totalLagu: ', data.data.likedSongsLenght);
-      console.log('Lagu1: ', data.data.likedSongs[0]);
-      setLoading(false);
-    } catch (err) {
-      console.log(err.message);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const searchData = await axios.get(`http://192.168.1.4:3050/search?q=${input}`);
+        console.log('dataSearch: ', searchData.data);
+
+        // Mendapatkan daftar lagu yang disukai
+        const likedData = await axios.get('http://192.168.1.4:3050/likedsongs');
+        const likedSongs = likedData.data.likedSongs.map((song) => song.id);
+
+        // Menambahkan properti isLiked ke hasil pencarian
+        const updatedResults = searchData.data.map((result) => ({
+          ...result,
+          isLiked: likedSongs.includes(result.id),
+        }));
+
+        setResults(updatedResults);
+        setLoading(false);
+      } catch (error) {
+        console.error('Search Error:', error);
+        setLoading(false);
+      }
+    };
+
+    if (input.trim() !== '') {
+      fetchData();
+    } else {
+      setResults([]);
       setLoading(false);
     }
-  };
-  useEffect(() => {
-    getLikedSongs();
-  }, []);
+  }, [input]);
 
-  useEffect(() => {
-    console.log('Liked Songs Updated:', likedSongs);
-  }, [likedSongs]);
+  const handleInputChange = (text) => {
+    setInput(text);
+  };
 
   const playTrack = async () => {
-    if (likedSongs.length > 0) {
-      setCurrentTrack(likedSongs[0]);
+    if (results.length > 0) {
+      setCurrentTrack(results[0]);
     }
-    await play(likedSongs[0]);
+    await play(results[0]);
   };
+
   const play = async (nextTrack) => {
-    console.log(nextTrack);
-    const preview = nextTrack?.preview;
+    console.log('Next Track: ', nextTrack);
+    const uri = nextTrack?.preview;
+    console.log('Next Track uri: ', uri);
     try {
       if (currentSound) {
         await currentSound.stopAsync();
@@ -73,7 +87,7 @@ const SongLikedScreen = () => {
       });
       const { sound, status } = await Audio.Sound.createAsync(
         {
-          uri: preview,
+          uri: uri,
         },
         {
           shouldPlay: true,
@@ -86,14 +100,15 @@ const SongLikedScreen = () => {
       setIsPlaying(status.isLoaded);
       await sound.playAsync();
     } catch (err) {
-      console.log(err.message);
+      console.log('error play: ', err.message);
     }
   };
+
   const onPlaybackStatusUpdate = async (status) => {
-    console.log(status);
+    console.log('Playback status: ', status);
     if (status.isLoaded && status.isPlaying) {
       const progress = status.positionMillis / status.durationMillis;
-      console.log('progresss', progress);
+      console.log('progresss: ', progress);
       setProgress(progress);
       setCurrentTime(status.positionMillis);
       setTotalDuration(status.durationMillis);
@@ -135,8 +150,8 @@ const SongLikedScreen = () => {
       setCurrentSound(null);
     }
     value.current += 1;
-    if (value.current < likedSongs.length) {
-      const nextTrack = likedSongs[value.current];
+    if (value.current < results.length) {
+      const nextTrack = results[value.current];
       setCurrentTrack(nextTrack);
       extractColors();
       await play(nextTrack);
@@ -151,8 +166,8 @@ const SongLikedScreen = () => {
       setCurrentSound(null);
     }
     value.current -= 1;
-    if (value.current < likedSongs.length) {
-      const nextTrack = likedSongs[value.current];
+    if (value.current < results.length) {
+      const nextTrack = results[value.current];
       setCurrentTrack(nextTrack);
 
       await play(nextTrack);
@@ -166,57 +181,51 @@ const SongLikedScreen = () => {
       <LinearGradient colors={['#440B57', '#1D181F']} style={{ flex: 1 }}>
         <ScrollView style={{ marginTop: 50 }}>
           <SafeAreaView>
-            <Pressable onPress={() => navigation.goBack()} style={{ marginHorizontal: 10 }}>
-              <Ionicons name="arrow-back" size={24} color="white" />
-            </Pressable>
-            <View style={{ marginHorizontal: 10 }}>
-              <View style={{ height: 20 }} />
-              <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>Lagu yang Disukai</Text>
-              <Text style={{ color: 'white', fontSize: 13, marginTop: 5 }}>{songTotal} Lagu</Text>
-            </View>
             <Pressable
               style={{
+                marginHorizontal: 10,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginHorizontal: 10,
               }}
             >
               <Pressable
                 style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 15,
-                  backgroundColor: '#1DB954',
-                  justifyContent: 'center',
+                  flexDirection: 'row',
                   alignItems: 'center',
+                  gap: 5,
+                  backgroundColor: '#542C61',
+                  padding: 5,
+                  flex: 1,
+                  borderRadius: 3,
+                  height: 50,
                 }}
               >
-                <AntDesign name="arrowdown" size={20} color="white" />
+                <Pressable onPress={() => navigation.goBack()} style={{ marginHorizontal: 10 }}>
+                  <Ionicons name="arrow-back" size={24} color="white" />
+                </Pressable>
+                <TextInput value={input} onChangeText={(text) => handleInputChange(text)} placeholder="Apa yang ingin kamu dengarkan? " placeholderTextColor={'white'} style={{ fontWeight: '500', color: 'white' }} />
               </Pressable>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <MaterialCommunityIcons name="cross-bolnisi" size={24} color="#1DB954" />
-                <AntDesign name="play" size={50} color="#1DB954" onPress={playTrack} />
-              </View>
             </Pressable>
+            <View style={{ height: 10 }} />
             {loading ? (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator size="large" color="#ffffff" />
               </View>
             ) : (
-              <FlatList data={likedSongs} renderItem={({ item }) => <SongItem item={item} onPress={play} isPlaying={item === currentTrack} />} />
+              <FlatList showsVerticalScrollIndicator={false} data={results} renderItem={({ item }) => <SongItem item={item} onPress={play} isPlaying={item === currentTrack} />} />
             )}
-            <View style={{ height: 20 }} />
           </SafeAreaView>
         </ScrollView>
       </LinearGradient>
-
       {currentTrack && (
         <Pressable
           onPress={() => {
-            console.log('modalVisiblecurent: ', modalVisible);
-            setModalVisible(!modalVisible);
+            console.log('modalVisible before toggle: ', modalVisible);
+            setModalVisible((prevModalVisible) => {
+              console.log('prevModalVisible: ', prevModalVisible);
+              return !prevModalVisible;
+            });
           }}
           style={{
             backgroundColor: '#3B0D51',
@@ -355,7 +364,7 @@ const SongLikedScreen = () => {
   );
 };
 
-export default SongLikedScreen;
+export default SearchedScreen;
 
 const styles = StyleSheet.create({
   progressbar: {
