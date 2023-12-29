@@ -7,6 +7,7 @@ To install the project, follow these steps:
    ```sh
    npm install
    ```
+3. Add client id and clinet secret from your spotify dev in .env
 
 ## Usage
 
@@ -20,3 +21,4 @@ To run the application, follow these steps:
    ```
    http://localhost:3050/login
    ```
+3. You can use spotify API
