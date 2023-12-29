@@ -15,6 +15,7 @@ import SearchedScreen from './screens/SearchedScreen';
 import AlbumDetail from './screens/AlbumDetail';
 import BrowseDetail from './screens/BrowseDetail';
 import ArtistScreen from './screens/ArtistScreen';
+import Profile from './screens/Profile';
 
 import { Entypo } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
@@ -92,6 +93,7 @@ function StackNavigator() {
         <Stack.Screen name="AlbumDetail" component={AlbumDetail} options={{ headerShown: false }} />
         <Stack.Screen name="ArtistScreen" component={ArtistScreen} options={{ headerShown: false }} />
         <Stack.Screen name="BrowseDetail" component={BrowseDetail} options={{ headerShown: false }} />
+        <Stack.Screen name="Profile" component={Profile} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

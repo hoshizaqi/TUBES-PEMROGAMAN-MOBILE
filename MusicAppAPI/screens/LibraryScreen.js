@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, Image, Pressable, FlatList, Button } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, Image, Pressable, FlatList, Button, TextInput, Alert } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Modal from 'react-native-modals';
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { AntDesign } from '@expo/vector-icons';
@@ -13,7 +14,9 @@ const LibraryScreen = () => {
   const navigation = useNavigation();
   const [profileImage, setProfileImage] = useState(null);
   const [myPlaylist, setMyPlaylist] = useState([]);
-  const [likedSongs, setLikedSongs] = useState([]);
+  const [ModalVisible, setModalVisible] = useState(false);
+  const [playlistName, setPlaylistName] = useState('');
+  const [id, setId] = useState('');
 
   const profile = async () => {
     const profile = await AsyncStorage.getItem('profile_image');
@@ -39,17 +42,18 @@ const LibraryScreen = () => {
 
   const renderItem = ({ item }) => {
     return (
-      <Pressable onPress={() => navigation.navigate('AlbumDetail', { id: item.id, images: item.images[0].url, name: item.name, totalTracks: item.total_tracks, owner: item.owner })}>
+      <Pressable onPress={() => navigation.navigate('AlbumDetail', { id: item.id, images: item?.images[0]?.url, name: item.name, totalTracks: item.total_tracks, owner: item.owner })}>
         <View style={{ flexDirection: 'row', padding: 10 }}>
-          <Image source={{ uri: item.images[0].url }} style={{ width: 70, height: 70, marginRight: 10 }} />
+          <Image source={{ uri: item?.images[0]?.url }} style={{ width: 70, height: 70, marginRight: 10 }} />
 
           <View style={{ flex: 1, flexDirection: 'column', alignContent: 'center' }}>
             <View style={{ flex: 1 }}>
               <Text style={{ color: 'white', fontSize: 17, fontWeight: 'bold' }}>{item.name}</Text>
             </View>
 
-            <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ color: 'white', fontSize: 13, fontWeight: '400' }}>Playlist - {item.owner}</Text>
+              <Ionicons name="ios-trash-bin" size={24} color="#1DB954" onPress={() => deletePlaylist(item.id)} />
             </View>
           </View>
         </View>
@@ -57,18 +61,96 @@ const LibraryScreen = () => {
     );
   };
 
-  const getLikedSongs = async () => {
+  const toggleModal = () => {
+    setModalVisible(!ModalVisible);
+  };
+
+  const addPlaylists = () => {
+    toggleModal();
+  };
+
+  const renderModalContent = () => (
+    <View style={{ justifyContent: 'center', alignItems: 'center', height: 200, width: 270, backgroundColor: '#602B79' }}>
+      <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: 'white' }}>Buat Playlist Baru</Text>
+      <TextInput
+        placeholder="Masukkan Nama Playlist"
+        value={playlistName}
+        onChangeText={(text) => setPlaylistName(text)}
+        style={{
+          borderWidth: 1,
+          padding: 10,
+          marginBottom: 20,
+          width: 200,
+          backgroundColor: 'white',
+          color: 'black', //
+        }}
+      />
+      <View style={{ flexDirection: 'row', alignContent: 'space-between', gap: 10 }}>
+        <Button title="Buat Playlist" onPress={createPlaylist} />
+        <Button title="Batal" onPress={toggleModal} />
+      </View>
+    </View>
+  );
+
+  const createPlaylist = async () => {
     try {
-      const data = await axios.get('http://192.168.1.4:3050/likedsongs');
-      console.log('dataLikedsongs: ', data.data);
-      setLikedSongs(data.data);
+      const response = await axios.post('http://192.168.1.4:3050/createplaylist', {
+        playlistName: playlistName,
+      });
+
+      console.log('New playlist created:', response.data);
+      Alert.alert('Sukses', 'Playlist telah berhasil dibuat!');
+
+      toggleModal();
+
+      getMyPaylist();
     } catch (err) {
-      console.log(err.message);
+      Alert.alert('Error', 'Terjadi kesalahan saat membuat playlist.');
+      console.error('Error creating playlist:', err.message);
     }
   };
-  useEffect(() => {
-    getLikedSongs();
-  }, []);
+
+  const deletePlaylist = (playlistId) => {
+    setId(playlistId);
+    Alert.alert(
+      'Konfirmasi',
+      'Apakah Anda yakin ingin menghapus playlist ini?',
+      [
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+        {
+          text: 'Hapus',
+          onPress: () => confirmDeletePlaylist(),
+        },
+      ],
+      { cancelable: false }
+    );
+  };
+
+  const confirmDeletePlaylist = async () => {
+    try {
+      // Kirim request delete ke backend
+      const response = await fetch(`http://192.168.1.4:3050/deleteplaylist/${id}`, {
+        method: 'DELETE',
+      });
+
+      // Periksa status response
+      if (response.ok) {
+        // Playlist dihapus berhasil
+        Alert.alert('Sukses', 'Playlist berhasil dihapus');
+        getMyPaylist(); // Refresh daftar playlist setelah menghapus
+      } else {
+        // Terjadi kesalahan saat menghapus playlist
+        const errorMessage = await response.text();
+        Alert.alert('Error', `Gagal menghapus playlist. ${errorMessage}`);
+      }
+    } catch (error) {
+      console.error('Delete Playlist Error:', error);
+      Alert.alert('Error', 'Terjadi kesalahan saat menghapus playlist');
+    }
+  };
 
   return (
     <LinearGradient colors={['#440B57', '#1D181F']} style={{ flex: 1 }}>
@@ -104,7 +186,7 @@ const LibraryScreen = () => {
                 Koleksi Kamu
               </Text>
             </View>
-            <Pressable style={{ marginRight: 10 }}>
+            <Pressable style={{ marginRight: 10 }} onPress={addPlaylists}>
               <Ionicons name="ios-add-sharp" size={35} color="white" />
             </Pressable>
           </View>
@@ -142,6 +224,9 @@ const LibraryScreen = () => {
           <Pressable>
             <FlatList data={myPlaylist} renderItem={renderItem} numColumns={1} />
           </Pressable>
+          <Modal animationType="slide" transparent={true} visible={ModalVisible} onRequestClose={toggleModal}>
+            {renderModalContent()}
+          </Modal>
         </SafeAreaView>
       </ScrollView>
     </LinearGradient>

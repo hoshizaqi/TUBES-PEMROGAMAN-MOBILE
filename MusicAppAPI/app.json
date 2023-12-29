@@ -8,9 +8,9 @@
     "userInterfaceStyle": "light",
     "scheme": "my-scheme",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/Spotify_icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#3B0D51"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {

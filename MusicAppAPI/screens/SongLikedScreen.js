@@ -19,8 +19,8 @@ import SongItem from '../components/SongItem';
 const SongLikedScreen = () => {
   const colors = ['#27374D', '#1D267D', '#BE5A83', '#212A3E', '#917FB3', '#37306B', '#443C68', '#5B8FB9', '#144272'];
   const navigation = useNavigation();
-  const [modalVisible, setModalVisible] = useState(false);
   const [likedSongs, setLikedSongs] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
   const [songTotal, setSongTotal] = useState([]);
   const { currentTrack, setCurrentTrack } = useContext(Player);
   const [loading, setLoading] = useState(true);
@@ -48,6 +48,10 @@ const SongLikedScreen = () => {
   useEffect(() => {
     getLikedSongs();
   }, []);
+
+  useEffect(() => {
+    console.log('Liked Songs Updated:', likedSongs);
+  }, [likedSongs]);
 
   const playTrack = async () => {
     if (likedSongs.length > 0) {

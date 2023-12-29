@@ -1,23 +1,30 @@
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, Image, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, Image, Pressable, FlatList, ActivityIndicator, Alert, TextInput, Button } from 'react-native';
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { BottomModal } from 'react-native-modals';
+import { ModalContent } from 'react-native-modals';
+import Modal from 'react-native-modals';
+import { useNavigation } from '@react-navigation/native';
+
 import { LinearGradient } from 'expo-linear-gradient';
 import { AntDesign } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import axios from 'axios';
-import { BottomModal } from 'react-native-modals';
-import { ModalContent } from 'react-native-modals';
-import { useNavigation } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+
+import axios from 'axios';
 
 import { Player } from '../PlayerContext';
 import SongItem from '../components/SongItem';
 
 const AlbumDetail = ({ route }) => {
+  const colors = ['#27374D', '#1D267D', '#BE5A83', '#212A3E', '#917FB3', '#37306B', '#443C68', '#5B8FB9', '#144272'];
   const navigation = useNavigation();
   const { id, images, name, totalTracks, owner } = route.params;
+  const [newName, setNewName] = useState('');
+  const [songs, setSongs] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [modalVisible2, setModalVisible2] = useState(false);
   const { currentTrack, setCurrentTrack } = useContext(Player);
   const [loading, setLoading] = useState(true);
   const [currentSound, setCurrentSound] = useState(null);
@@ -25,7 +32,7 @@ const AlbumDetail = ({ route }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [totalDuration, setTotalDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [songs, setSongs] = useState([]);
+  const [playlistName, setPlaylistName] = useState(name);
   const value = useRef(0);
 
   const getSongs = async () => {
@@ -116,6 +123,12 @@ const AlbumDetail = ({ route }) => {
     }
   };
 
+  const extractColors = async () => {
+    const randomIndex = Math.floor(Math.random() * colors.length);
+    const randomColor = colors[randomIndex];
+    setBackgroundColor(randomColor);
+  };
+
   const playNextTrack = async () => {
     if (currentSound) {
       await currentSound.stopAsync();
@@ -125,6 +138,7 @@ const AlbumDetail = ({ route }) => {
     if (value.current < songs.length) {
       const nextTrack = songs[value.current];
       setCurrentTrack(nextTrack);
+      extractColors();
       await play(nextTrack);
     } else {
       console.log('end of playlist');
@@ -147,6 +161,22 @@ const AlbumDetail = ({ route }) => {
     }
   };
 
+  const renamePlaylist = async () => {
+    try {
+      const response = await axios.put(`http://192.168.1.4:3050/renameplaylist/${id}`, {
+        newName: newName,
+      });
+      setPlaylistName(newName);
+
+      // Handle the response accordingly.
+      console.log('renamePlaylisyt: ', response.data);
+      setModalVisible2(false);
+    } catch (error) {
+      // Handle errors.
+      console.error('Rename Playlist Error:', error);
+    }
+  };
+
   return (
     <>
       <LinearGradient colors={['#440B57', '#1D181F']} style={{ flex: 1 }}>
@@ -158,7 +188,7 @@ const AlbumDetail = ({ route }) => {
             <View style={{ marginHorizontal: 10 }}>
               <Image source={{ uri: images }} style={{ width: 200, height: 200, alignSelf: 'center' }} />
               <View style={{ height: 20 }} />
-              <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>{name}</Text>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>{playlistName}</Text>
               <Text style={{ fontSize: 13, fontWeight: 'bold', color: 'white' }}>{owner}</Text>
               <Text style={{ color: 'white', fontSize: 13, marginTop: 5 }}>{totalTracks} Lagu</Text>
             </View>
@@ -184,8 +214,42 @@ const AlbumDetail = ({ route }) => {
                 <AntDesign name="arrowdown" size={20} color="white" />
               </Pressable>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <MaterialCommunityIcons name="cross-bolnisi" size={24} color="#1DB954" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 30 }}>
+                <Feather name="edit" size={30} color="#1DB954" onPress={() => setModalVisible2(true)} />
+                <Modal
+                  animationType="slide"
+                  transparent={true}
+                  visible={modalVisible2}
+                  onRequestClose={() => {
+                    setModalVisible2(!modalVisible2);
+                  }}
+                >
+                  <View style={{ justifyContent: 'center', alignItems: 'center', height: 200, width: 270, backgroundColor: '#602B79' }}>
+                    <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: 'white' }}>Rename Playlist</Text>
+                    <TextInput
+                      placeholder="Masukkan Nama Playlist"
+                      value={newName}
+                      onChangeText={(text) => setNewName(text)}
+                      style={{
+                        borderWidth: 1,
+                        padding: 10,
+                        marginBottom: 20,
+                        width: 200,
+                        backgroundColor: 'white',
+                        color: 'black', //
+                      }}
+                    />
+                    <View style={{ flexDirection: 'row', alignContent: 'space-between', gap: 30 }}>
+                      <Button title="Simpan" onPress={renamePlaylist} />
+                      <Button
+                        title="Batal"
+                        onPress={() => {
+                          setModalVisible2(!modalVisible2);
+                        }}
+                      />
+                    </View>
+                  </View>
+                </Modal>
                 <AntDesign name="play" size={50} color="#1DB954" onPress={playTrack} />
               </View>
             </Pressable>

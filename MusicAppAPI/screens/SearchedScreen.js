@@ -32,9 +32,20 @@ const SearchedScreen = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const data = await axios.get(`http://192.168.1.4:3050/search?q=${input}`);
-        console.log('dataSearch: ', data.data);
-        setResults(data.data);
+        const searchData = await axios.get(`http://192.168.1.4:3050/search?q=${input}`);
+        console.log('dataSearch: ', searchData.data);
+
+        // Mendapatkan daftar lagu yang disukai
+        const likedData = await axios.get('http://192.168.1.4:3050/likedsongs');
+        const likedSongs = likedData.data.likedSongs.map((song) => song.id);
+
+        // Menambahkan properti isLiked ke hasil pencarian
+        const updatedResults = searchData.data.map((result) => ({
+          ...result,
+          isLiked: likedSongs.includes(result.id),
+        }));
+
+        setResults(updatedResults);
         setLoading(false);
       } catch (error) {
         console.error('Search Error:', error);
@@ -49,6 +60,10 @@ const SearchedScreen = () => {
       setLoading(false);
     }
   }, [input]);
+
+  const handleInputChange = (text) => {
+    setInput(text);
+  };
 
   const playTrack = async () => {
     if (results.length > 0) {
@@ -87,10 +102,6 @@ const SearchedScreen = () => {
     } catch (err) {
       console.log('error play: ', err.message);
     }
-  };
-
-  const handleInputChange = (text) => {
-    setInput(text);
   };
 
   const onPlaybackStatusUpdate = async (status) => {
@@ -194,7 +205,6 @@ const SearchedScreen = () => {
                   <Ionicons name="arrow-back" size={24} color="white" />
                 </Pressable>
                 <TextInput value={input} onChangeText={(text) => handleInputChange(text)} placeholder="Apa yang ingin kamu dengarkan? " placeholderTextColor={'white'} style={{ fontWeight: '500', color: 'white' }} />
-                {/* <Text style={{ fontWeight: '500', color: 'white', marginLeft: 20 }}>Apa yang ingin kamu dengarkan?</Text> */}
               </Pressable>
             </Pressable>
             <View style={{ height: 10 }} />
