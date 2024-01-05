@@ -277,16 +277,12 @@ app.get('/artist/:artistUri', async (req, res) => {
   }
 });
 
-// Route handler for getting top songs of an artist.
 app.get('/topsongs/:artistId', async (req, res) => {
   try {
-    // Extract the artist ID from the request parameters.
     const { artistId } = req.params;
 
-    // Get the top songs of the artist.
-    const topSongsData = await spotifyApi.getArtistTopTracks(artistId, 'US'); // 'US' is the country code, adjust as needed
+    const topSongsData = await spotifyApi.getArtistTopTracks(artistId, 'US');
 
-    // Extract relevant information from the top songs data.
     const topSongs = topSongsData.body.tracks.map((track) => ({
       name: track.name,
       uri: track.uri,
@@ -296,7 +292,6 @@ app.get('/topsongs/:artistId', async (req, res) => {
       id: track.id,
     }));
 
-    // Send the top songs back to the client.
     res.send(topSongs);
   } catch (err) {
     console.error('Top Songs Error:', err);
@@ -439,19 +434,15 @@ app.get('/playlist/:playlistId', async (req, res) => {
   }
 });
 
-// Route handler for creating a new playlist.
 app.post('/createplaylist', async (req, res) => {
   try {
-    // Extract the user ID and playlist name from the request body.
     const { playlistName } = req.body;
 
-    // Create a new playlist.
     const newPlaylist = await spotifyApi.createPlaylist(playlistName, {
       description: 'New Playlist',
       public: true,
     });
 
-    // Send the details of the new playlist back to the client.
     res.send(newPlaylist.body);
   } catch (err) {
     console.error('Create Playlist Error:', err);
@@ -459,14 +450,11 @@ app.post('/createplaylist', async (req, res) => {
   }
 });
 
-// Route handler for renaming a playlist.
 app.put('/renameplaylist/:playlistId', async (req, res) => {
   try {
-    // Extract the playlist ID and new name from the request body.
     const { playlistId } = req.params;
     const { newName } = req.body;
 
-    // Rename the playlist.
     await spotifyApi.changePlaylistDetails(playlistId, { name: newName });
 
     res.send('Playlist name updated');
@@ -476,13 +464,10 @@ app.put('/renameplaylist/:playlistId', async (req, res) => {
   }
 });
 
-// Route handler for deleting a playlist.
 app.delete('/deleteplaylist/:playlistId', async (req, res) => {
   try {
-    // Extract the playlist ID from the request parameters.
     const { playlistId } = req.params;
 
-    // Unfollow (delete) the playlist.
     const unfollowPlaylistResponse = await spotifyApi.unfollowPlaylist(playlistId);
 
     if (unfollowPlaylistResponse.statusCode === 200) {
@@ -497,13 +482,10 @@ app.delete('/deleteplaylist/:playlistId', async (req, res) => {
   }
 });
 
-// Function to check if a track is in a playlist.
 async function isTrackInPlaylist(playlistId, trackId) {
   try {
-    // Get the tracks in the playlist.
     const playlistTracks = await spotifyApi.getPlaylistTracks(playlistId);
 
-    // Check if the track ID is in the playlist.
     return playlistTracks.body.items.some((item) => item.track.id === trackId);
   } catch (err) {
     console.error('Check Playlist Error:', err);
@@ -511,21 +493,17 @@ async function isTrackInPlaylist(playlistId, trackId) {
   }
 }
 
-// Route handler for adding a track to a playlist.
 app.post('/addtoplaylist/:playlistId/:trackId', async (req, res) => {
   try {
-    // Extract the playlist ID and track ID from the request parameters.
     const { playlistId, trackId } = req.params;
 
     const trackUri = `spotify:track:${trackId}`;
 
-    // Check if the track is already in the playlist.
     const isTrackInPlaylistResult = await isTrackInPlaylist(playlistId, trackId);
 
     if (isTrackInPlaylistResult) {
       res.send('Track is already in the playlist');
     } else {
-      // Add the track to the playlist.
       await spotifyApi.addTracksToPlaylist(playlistId, [trackUri]);
       res.send('Track added to the playlist');
     }
@@ -535,19 +513,14 @@ app.post('/addtoplaylist/:playlistId/:trackId', async (req, res) => {
   }
 });
 
-// Route handler for removing tracks from a playlist.
 app.delete('/removefromplaylist/:playlistId', async (req, res) => {
   try {
-    // Extract the playlist ID from the request parameters.
     const { playlistId } = req.params;
 
-    // Extract an array of track URIs from the request body.
     const { tracks } = req.body;
 
-    // Remove the tracks from the playlist.
     const response = await spotifyApi.removeTracksFromPlaylist(playlistId, tracks);
 
-    // Send a success response.
     res.send('Tracks removed from playlist successfully');
   } catch (error) {
     console.error('Remove Tracks Error:', error);
@@ -578,16 +551,12 @@ app.get('/likedsongs', async (req, res) => {
   }
 });
 
-// Route handler for checking if a track is in Liked Songs.
 app.get('/isliked/:trackId', async (req, res) => {
   try {
-    // Extract the track ID from the request parameters.
     const { trackId } = req.params;
 
-    // Check if the track is in Liked Songs.
     const isLiked = await spotifyApi.containsMySavedTracks([trackId]);
 
-    // Send the result (true or false) back to the client.
     res.send({ isLiked });
   } catch (err) {
     console.error('Check Liked Songs Error:', err);
@@ -595,13 +564,10 @@ app.get('/isliked/:trackId', async (req, res) => {
   }
 });
 
-// Route handler for adding a track to Liked Songs.
 app.get('/like/:trackId', async (req, res) => {
   try {
-    // Extract the track ID from the request parameters.
     const { trackId } = req.params;
 
-    // Add the track to Liked Songs.
     await spotifyApi.addToMySavedTracks([trackId]);
 
     res.send('Track added to Liked Songs');
@@ -611,13 +577,10 @@ app.get('/like/:trackId', async (req, res) => {
   }
 });
 
-// Route handler for removing a track from Liked Songs.
 app.get('/unlike/:trackId', async (req, res) => {
   try {
-    // Extract the track ID from the request parameters.
     const { trackId } = req.params;
 
-    // Remove the track from Liked Songs.
     await spotifyApi.removeFromMySavedTracks([trackId]);
 
     res.send('Track removed from Liked Songs');

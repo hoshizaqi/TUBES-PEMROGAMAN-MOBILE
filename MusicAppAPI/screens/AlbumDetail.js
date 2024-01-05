@@ -168,11 +168,9 @@ const AlbumDetail = ({ route }) => {
       });
       setPlaylistName(newName);
 
-      // Handle the response accordingly.
       console.log('renamePlaylisyt: ', response.data);
       setModalVisible2(false);
     } catch (error) {
-      // Handle errors.
       console.error('Rename Playlist Error:', error);
     }
   };
